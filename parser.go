@@ -52,15 +52,11 @@ func (p *DefaultJWTParser) Check(ctx context.Context, token string, claims jwt.C
 		if !ok {
 			return nil, errors.New(ErrorJWTUnsupportedKeyIdentifierType)
 		}
-		pem, err := p.keys.FetchRSA(ctx, kidstr)
+		key, err := p.keys.FetchRSA(ctx, kidstr)
 		if err == ErrorKeyNotFound {
 			return nil, err
 		} else if err != nil {
 			return nil, NestedError{ErrorJWTCertificateFetch, err}
-		}
-		key, err := jwt.ParseRSAPublicKeyFromPEM(pem)
-		if err != nil {
-			return nil, NestedError{ErrorJWTCertificateParse, err}
 		}
 		return key, nil
 	})

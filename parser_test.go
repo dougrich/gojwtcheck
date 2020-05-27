@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -20,19 +18,11 @@ func TestJWTParser(t *testing.T) {
 		TestUserName = "test-user-name"
 	)
 
-	createJWTPublic := func(kid string) (string, []byte) {
+	createJWTPublic := func(kid string) (string, *rsa.PublicKey) {
 		key, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
 			panic(err)
 		}
-		x509bytes, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
-		if err != nil {
-			panic(err)
-		}
-		pempublickey := pem.EncodeToMemory(&pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: x509bytes,
-		})
 		token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 			"sub":  TestUserID,
 			"name": TestUserName,
@@ -42,7 +32,7 @@ func TestJWTParser(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		return tokenString, pempublickey
+		return tokenString, &key.PublicKey
 	}
 
 	t.Run("OK", func(t *testing.T) {
@@ -50,7 +40,7 @@ func TestJWTParser(t *testing.T) {
 		assert := assert.New(t)
 		token, publickey := createJWTPublic(TestKID)
 		certstore := NewMockKeyStore(t)
-		certstore.Value = publickey
+		certstore.Public = publickey
 		verifier := NewDefaultJWTParser(certstore)
 		claims := jwt.MapClaims{}
 		err := verifier.Check(context.Background(), token, &claims)
